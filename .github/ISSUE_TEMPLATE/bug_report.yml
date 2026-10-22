@@ -1,0 +1,70 @@
+name: Bug report
+description: 报告一个可复现的问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。提交前请先搜索已有 Issue，并删除日志中的个人路径与隐私信息。
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      placeholder: V1.2.7
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows 版本
+      placeholder: Windows 11 23H2
+    validations:
+      required: true
+
+  - type: input
+    id: resolution
+    attributes:
+      label: 游戏分辨率与显示模式
+      placeholder: 2560x1600 独占全屏
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: 模式
+      options:
+        - 测试模式
+        - 正常模式
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 发生了什么？你期望发生什么？能否稳定复现？
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开...
+        2. 按 F1...
+        3. 观察到...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: 可附上 monitor_events.jsonl 的相关片段。请先删除个人路径和隐私信息。
+    validations:
+      required: false

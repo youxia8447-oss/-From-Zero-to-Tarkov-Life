@@ -1,10 +1,10 @@
-"""Replace the embedded icon and exit sound in a PyInstaller archive.
+"""Replace the embedded icon and exit-sound assets in a PyInstaller archive.
 
-The default paths match this project's optional asset layout. Assets are not
-included in the repository; supply your own before running this script.
+Defaults: base/base_branded.exe -> build/base_custom.exe
+Usage:    python patch_assets.py [source.exe] [output.exe]
 
-Usage:
-    python scripts/patch_assets.py [source.exe] [output.exe]
+Note: the archive slot named assets\\duckov_extract.wav holds the Itachi exit
+sound in this build. assets\\subaru_clean.ico holds the Subaru icon.
 """
 import struct
 import sys
@@ -16,13 +16,8 @@ SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else BASE / "base" / "base_branded.
 DST = Path(sys.argv[2]) if len(sys.argv) > 2 else BASE / "build" / "base_custom.exe"
 ICO = BASE / "assets" / "icons" / "first_icon.ico"
 WAV = BASE / "assets" / "audio" / "itachi_exit_v2_35.wav"
-COOKIE = b"MEI\x0c\x0b\x0a\x0b\x0e"
 
-if not ICO.is_file() or not WAV.is_file():
-    raise SystemExit(
-        "Missing assets. Place first_icon.ico and itachi_exit_v2_35.wav under "
-        "assets/icons and assets/audio, or edit the paths in this script."
-    )
+COOKIE = b"MEI\x0c\x0b\x0a\x0b\x0e"
 
 REPLACEMENTS = {
     "assets\\subaru_clean.ico": ICO.read_bytes(),

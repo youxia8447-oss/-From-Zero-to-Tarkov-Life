@@ -84,6 +84,7 @@ IFACE_TKF = {
     "K": "TKF-7314-K",
     "H": "TKF-7314-H",
     "X": "TKF-7314-X",
+    "Y": "TKF-7314-Y",
     "0": "TKF-7314-0",
 }
 IFACE_NAMES = {
@@ -102,9 +103,10 @@ IFACE_NAMES = {
     "K": ("确认", "Confirmation"),
     "H": ("转生 / 未识别页签", "Prestige / unlisted tab"),
     "X": ("战斗 HUD", "Combat HUD"),
+    "Y": ("战局结束", "Raid summary"),
     "0": ("未识别", "Unrecognized"),
 }
-IFACE_SAFE = frozenset("ABCDEFGOPQSKH")
+IFACE_SAFE = frozenset("ABCDEFGOPQSKHY")
 
 _VK = {"space": 32, "tab": 9, "Return": 13, "BackSpace": 8}
 _LABELS = {"space": "Space", "Return": "Enter", "BackSpace": "Backspace"}
@@ -151,6 +153,27 @@ def _send_key(vk, up):
         return False
 
 
+_AUTO_DOWN_VK = None
+
+
+def _release_auto_key():
+    global _AUTO_DOWN_VK
+    vk = _AUTO_DOWN_VK
+    if vk is None:
+        return True
+    _AUTO_DOWN_VK = None
+    return _send_key(vk, True)
+
+
+def _tap_auto_key(vk):
+    global _AUTO_DOWN_VK
+    _release_auto_key()
+    if not _send_key(vk, False):
+        return False
+    _AUTO_DOWN_VK = vk
+    return True
+
+
 def _modifiers_down():
     user32 = getattr(sys.modules.get("__main__"), "U", None)
     if user32 is None:
@@ -190,7 +213,7 @@ TEXTS = {
     "zh": {
         "lang_button": "EN",
         "release_suffix": f" · {RELEASE_NAME}",
-        "about_version": "",
+        "about_version": " · V1.2.7",
         "tab_prep": "战前准备",
         "tab_advanced": "进阶设置",
         "tab_diag": "日志诊断",
@@ -278,7 +301,7 @@ TEXTS = {
     "en": {
         "lang_button": "中",
         "release_suffix": f" · {RELEASE_NAME_EN}",
-        "about_version": "",
+        "about_version": " · V1.2.7",
         "tab_prep": "Prep",
         "tab_advanced": "Advanced",
         "tab_diag": "Diagnostics",
@@ -375,9 +398,7 @@ SOUND_NAMES_EN = {
     "486回归音效": "486 Return Sound",
     "轻提示 · 开启": "Soft cue · On",
     "轻提示 · 关闭": "Soft cue · Off",
-    "电子回溯": "Electronic Rewind",
     "杀手皇后第三炸弹败者食尘": "Killer Queen · Bites the Dust",
-    "塔科夫任务完成电音": "Tarkov Quest Complete",
     "宇智波鼬 · 幻术": "Itachi · Illusion",
 }
 
@@ -750,6 +771,20 @@ class PrimaryUI:
             return PROFILE_NAMES_EN.get(key, name)
         return name
 
+    def _header_status_text(self):
+        text = self.state_head_var.get()
+        if self.language != "en":
+            return text
+        for prefix, short in (
+            ("Not started", "Idle"),
+            ("Monitoring", "Active"),
+            ("Round ended", "Ended"),
+            ("Stopped", "Stopped"),
+        ):
+            if text.startswith(prefix):
+                return short
+        return text
+
     def _sound_display(self, actual):
         if self.language == "en":
             return SOUND_NAMES_EN.get(actual, actual)
@@ -824,10 +859,10 @@ class PrimaryUI:
             f"{self._profile_name(self._profile_key)}{self._t('release_suffix')}"
         )
         self.root.configure(bg=BG)
-        self.root.geometry("600x540")
+        self.root.geometry("464x540")
         self.root.resizable(False, False)
-        self.root.minsize(600, 540)
-        self.root.maxsize(600, 540)
+        self.root.minsize(464, 540)
+        self.root.maxsize(464, 540)
 
     def _configure_style(self):
         style = ttk.Style(self.root)
@@ -875,30 +910,32 @@ class PrimaryUI:
 
         header = tk.Frame(outer, bg=BG, padx=10, pady=6)
         header.pack(fill="x")
-        self.header_title = tk.Label(
-            header, text="", bg=BG, fg=TEXT,
-            font=(FONT, 10, "bold"), anchor="w",
-        )
-        self.header_title.pack(side="left")
-        self.mode_badge = tk.Label(
-            header, text=self._t("standby_badge"), bg=BUTTON, fg=MUTED,
-            font=(FONT, 8, "bold"), padx=6, pady=1,
-        )
-        self.mode_badge.pack(side="right")
-        self.header_status = tk.Label(
-            header, text="", bg=BG, fg=MUTED,
-            font=(FONT, 8), anchor="e",
-        )
-        self.header_status.pack(side="right", padx=(0, 6))
+        header_right = tk.Frame(header, bg=BG)
+        header_right.pack(side="right")
         self.lang_button = tk.Button(
-            header, text=self._t("lang_button"),
+            header_right, text=self._t("lang_button"),
             command=self._toggle_language,
             bg=BUTTON, fg=TEXT,
             activebackground=BUTTON_HOVER, activeforeground=TEXT,
             relief="flat", bd=0, cursor="hand2",
             font=(FONT, 8, "bold"), padx=5, pady=1,
         )
-        self.lang_button.pack(side="right", padx=(0, 6))
+        self.lang_button.pack(side="left", padx=(0, 6))
+        self.header_status = tk.Label(
+            header_right, text="", bg=BG, fg=MUTED,
+            font=(FONT, 8), anchor="e",
+        )
+        self.header_status.pack(side="left", padx=(0, 6))
+        self.mode_badge = tk.Label(
+            header_right, text=self._t("standby_badge"), bg=BUTTON, fg=MUTED,
+            font=(FONT, 8, "bold"), padx=6, pady=1,
+        )
+        self.mode_badge.pack(side="left")
+        self.header_title = tk.Label(
+            header, text="", bg=BG, fg=TEXT,
+            font=(FONT, 10, "bold"), anchor="w",
+        )
+        self.header_title.pack(side="left", fill="x", expand=True)
 
         tabbar = tk.Frame(outer, bg=BG, padx=8)
         tabbar.pack(fill="x", pady=(0, 6))
@@ -929,7 +966,7 @@ class PrimaryUI:
             self.pages.append(page)
         self._show_tab(0)
         self.root.update_idletasks()
-        self.root.geometry("600x540")
+        self.root.geometry("464x540")
 
     def _make_page(self, parent):
         page = tk.Frame(parent, bg=BG)
@@ -1499,11 +1536,24 @@ class PrimaryUI:
 
     def _hud_ready(self):
         app = self.app
-        if not (getattr(app, "active", False) or getattr(app, "arming", False)):
+        active = bool(getattr(app, "active", False))
+        if not (active or getattr(app, "arming", False)):
             return False
-        features = getattr(getattr(app, "detector", None), "last_features", None)
+        detector = getattr(app, "detector", None)
+        features = getattr(detector, "last_features", None)
         if not isinstance(features, dict) or not features:
             return False
+        if active:
+            # Once monitoring is armed, the gate treats a combat score above
+            # .22 as a live HUD. Requiring the stricter first-arm evidence here
+            # made auto key pause whenever hotbar frames dipped below the
+            # first-arm bar threshold.
+            interface = str(getattr(detector, "last_interface", "") or "")
+            try:
+                combat = float(features.get("combat_score", 0) or 0)
+            except (TypeError, ValueError):
+                return False
+            return interface == "A" or (interface == "X" and combat > .22)
         try:
             return bool(start_hud_evidence(features))
         except Exception:
@@ -1512,6 +1562,8 @@ class PrimaryUI:
     def _auto_changed(self):
         self._auto_prev = False
         self._auto_next = 0.0
+        if not self.auto_enabled.get():
+            _release_auto_key()
         config = self._auto_config()
         if config is None:
             self._auto_say(self._zh("auto_interval_error"), AMBER)
@@ -1576,6 +1628,7 @@ class PrimaryUI:
             self._auto_cancel()
             return "break"
         label = _label_for(keysym)
+        _release_auto_key()
         self.auto_vk.set(vk)
         self._auto_unbind()
         self.auto_button_text.set(label)
@@ -1588,6 +1641,7 @@ class PrimaryUI:
         if not hasattr(self, "auto_enabled"):
             return
         if not self.auto_enabled.get():
+            _release_auto_key()
             if getattr(self, "_auto_prev", False):
                 self._auto_prev = False
                 self._auto_next = 0.0
@@ -1595,9 +1649,11 @@ class PrimaryUI:
             return
         config = self._auto_config()
         if config is None:
+            _release_auto_key()
             self._auto_say(self._zh("auto_interval_error"), AMBER)
             return
         if not _game_foreground():
+            _release_auto_key()
             if getattr(self, "_auto_prev", False):
                 self._auto_prev = False
                 self._auto_next = 0.0
@@ -1605,6 +1661,7 @@ class PrimaryUI:
                 self._auto_say(self._zh("auto_foreground_paused"))
             return
         if not self._hud_ready():
+            _release_auto_key()
             if getattr(self, "_auto_prev", False):
                 self._auto_prev = False
                 self._auto_next = 0.0
@@ -1626,10 +1683,14 @@ class PrimaryUI:
         if now < self._auto_next:
             return
         if _modifiers_down():
+            _release_auto_key()
             self._auto_next = now + 0.5
             return
-        if _send_key(config["vk"], False):
-            self.root.after(50, lambda v=config["vk"]: _send_key(v, True))
+        if _tap_auto_key(config["vk"]):
+            try:
+                self.root.after(50, _release_auto_key)
+            except Exception:
+                _release_auto_key()
             self._auto_count += 1
             self._auto_say(
                 self._zh(
@@ -1639,6 +1700,7 @@ class PrimaryUI:
                 )
             )
         else:
+            _release_auto_key()
             self._auto_say(self._zh("auto_send_failed"), RED)
         self._auto_next = now + config["interval_sec"]
 
@@ -1987,7 +2049,7 @@ class PrimaryUI:
             )
 
         state = self.app.state_head.get()
-        self.header_status.configure(text=self.state_head_var.get())
+        self.header_status.configure(text=self._header_status_text())
         self.state_label.configure(
             fg=self._state_color(state + " " + self.app.status.get())
         )
@@ -2013,25 +2075,83 @@ class PrimaryUI:
             if self.hotkey_var.get() != current:
                 self.hotkey_var.set(current)
 
+    def _report_loop_error(self, exc):
+        now = time.monotonic()
+        if now - getattr(self, "_loop_error_at", 0.0) < 10:
+            return
+        self._loop_error_at = now
+        try:
+            self.app.event("ui_loop_error", error=f"{type(exc).__name__}: {exc}")
+        except Exception:
+            pass
+
+    def _extraction_standby(self):
+        app = self.app
+        if not getattr(app, "active", False):
+            self._extraction_standby_ticks = 0
+            return
+        detector = getattr(app, "detector", None)
+        extraction = getattr(detector, "last_extraction", None)
+        interface = str(getattr(detector, "last_interface", "") or "")
+        if (
+            not isinstance(extraction, dict)
+            or not extraction.get("banner")
+            or interface != "N"
+        ):
+            self._extraction_standby_ticks = 0
+            return
+        # Two UI ticks (~300 ms) keep a single misread frame from stopping a
+        # live raid, while still stopping long before the countdown ends.
+        self._extraction_standby_ticks = (
+            getattr(self, "_extraction_standby_ticks", 0) + 1
+        )
+        if self._extraction_standby_ticks < 2:
+            return
+        self._extraction_standby_ticks = 0
+        _release_auto_key()
+        cancel = getattr(app, "cancel", None)
+        if callable(cancel):
+            cancel(
+                "识别到撤离点绿色横幅，已停止监控并进入待机"
+                "（未发送 Alt+F4）"
+            )
+        else:
+            app.toggle()
+
     def _loop(self):
         if getattr(self.app, "closed", False):
+            _release_auto_key()
             return
-        value = self.exit_sound_var.get()
-        if value != self._last_sound:
-            self._last_sound = value
-            if value in PROFILES:
-                self._apply_profile(value)
         try:
-            actual = tuple(dict.fromkeys(self.app.sounds.exit_choices()))
-        except Exception:
-            actual = self._sound_actual_cache
-        if actual != self._sound_actual_cache:
-            self._update_sound_choices()
-        self._refresh()
-        self._auto_tick()
+            self._extraction_standby()
+        except Exception as exc:
+            self._report_loop_error(exc)
+        try:
+            value = self.exit_sound_var.get()
+            if value != self._last_sound:
+                self._last_sound = value
+                if value in PROFILES:
+                    self._apply_profile(value)
+            try:
+                actual = tuple(dict.fromkeys(self.app.sounds.exit_choices()))
+            except Exception:
+                actual = self._sound_actual_cache
+            if actual != self._sound_actual_cache:
+                self._update_sound_choices()
+            self._refresh()
+        except Exception as exc:
+            self._report_loop_error(exc)
+        try:
+            self._auto_tick()
+        except Exception as exc:
+            _release_auto_key()
+            self._report_loop_error(exc)
         self._tick += 1
         if self._tick % 10 == 0:
-            self._refresh_log()
+            try:
+                self._refresh_log()
+            except Exception as exc:
+                self._report_loop_error(exc)
         self.root.after(150, self._loop)
 
     def schedule(self):

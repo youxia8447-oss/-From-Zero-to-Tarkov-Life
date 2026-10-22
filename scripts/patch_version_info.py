@@ -10,7 +10,7 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 PATH = Path(sys.argv[1]) if len(sys.argv) > 1 else BASE / "base" / "base_branded.exe"
 APP = "从零开始的塔科夫生活"
-VERSION = "1.0.0.0"
+VERSION = "1.2.7.0"
 
 data = bytearray(PATH.read_bytes())
 pe = struct.unpack_from("<I", data, 0x3C)[0]
