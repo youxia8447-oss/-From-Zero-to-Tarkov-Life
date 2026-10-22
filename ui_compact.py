@@ -65,6 +65,47 @@ PROFILES = {
 }
 DEFAULT_PROFILE = "486回归音效"
 
+# Game-interface designations use an alternate TKF-style series. The letter
+# keeps the mapping to the interface document, while the numeric prefix makes
+# the header read like a task-force designation.
+IFACE_TKF = {
+    "A": "TKF-7314-A",
+    "B": "TKF-7314-B",
+    "C": "TKF-7314-C",
+    "D": "TKF-7314-D",
+    "E": "TKF-7314-E",
+    "F": "TKF-7314-F",
+    "G": "TKF-7314-G",
+    "O": "TKF-7314-O",
+    "P": "TKF-7314-P",
+    "Q": "TKF-7314-Q",
+    "N": "TKF-7314-N",
+    "S": "TKF-7314-S",
+    "K": "TKF-7314-K",
+    "H": "TKF-7314-H",
+    "X": "TKF-7314-X",
+    "0": "TKF-7314-0",
+}
+IFACE_NAMES = {
+    "A": ("无武装战局", "Unarmed raid HUD"),
+    "B": ("装备 / 背包", "Gear / inventory"),
+    "C": ("总览", "Overview"),
+    "D": ("健康", "Health"),
+    "E": ("技能", "Skills"),
+    "F": ("地图", "Map"),
+    "G": ("任务", "Quests"),
+    "O": ("成就", "Achievements"),
+    "P": ("控制台", "Console"),
+    "Q": ("游戏主页", "Game home"),
+    "N": ("撤离点", "Extraction"),
+    "S": ("设置", "Settings"),
+    "K": ("确认", "Confirmation"),
+    "H": ("转生 / 未识别页签", "Prestige / unlisted tab"),
+    "X": ("战斗 HUD", "Combat HUD"),
+    "0": ("未识别", "Unrecognized"),
+}
+IFACE_SAFE = frozenset("ABCDEFGOPQSKH")
+
 _VK = {"space": 32, "tab": 9, "Return": 13, "BackSpace": 8}
 _LABELS = {"space": "Space", "Return": "Enter", "BackSpace": "Backspace"}
 
@@ -149,7 +190,7 @@ TEXTS = {
     "zh": {
         "lang_button": "EN",
         "release_suffix": f" · {RELEASE_NAME}",
-        "about_version": f" · 16:10 {RELEASE_NAME}",
+        "about_version": "",
         "tab_prep": "战前准备",
         "tab_advanced": "进阶设置",
         "tab_diag": "日志诊断",
@@ -237,7 +278,7 @@ TEXTS = {
     "en": {
         "lang_button": "中",
         "release_suffix": f" · {RELEASE_NAME_EN}",
-        "about_version": f" · 16:10 {RELEASE_NAME_EN}",
+        "about_version": "",
         "tab_prep": "Prep",
         "tab_advanced": "Advanced",
         "tab_diag": "Diagnostics",
@@ -667,8 +708,8 @@ class PrimaryUI:
         return translate_dynamic_en(text) if self.language == "en" else text
 
     @staticmethod
-    def _zh(key, **values):
-        text = TEXTS["zh"].get(key, key)
+    def _zh(name, **values):
+        text = TEXTS["zh"].get(name, name)
         return text.format(**values) if values else text
 
     def _bind_text(self, widget, key, option="text"):
@@ -783,10 +824,10 @@ class PrimaryUI:
             f"{self._profile_name(self._profile_key)}{self._t('release_suffix')}"
         )
         self.root.configure(bg=BG)
-        self.root.geometry("464x540")
+        self.root.geometry("600x540")
         self.root.resizable(False, False)
-        self.root.minsize(464, 540)
-        self.root.maxsize(464, 540)
+        self.root.minsize(600, 540)
+        self.root.maxsize(600, 540)
 
     def _configure_style(self):
         style = ttk.Style(self.root)
@@ -888,7 +929,7 @@ class PrimaryUI:
             self.pages.append(page)
         self._show_tab(0)
         self.root.update_idletasks()
-        self.root.geometry("464x540")
+        self.root.geometry("600x540")
 
     def _make_page(self, parent):
         page = tk.Frame(parent, bg=BG)
@@ -1808,6 +1849,12 @@ class PrimaryUI:
             bg=CARD, fg=MUTED, font=(FONT, 7), anchor="w",
             justify="left", wraplength=410,
         ).pack(fill="x", pady=(2, 0))
+        self.interface_var = tk.StringVar(master=self.root, value="")
+        tk.Label(
+            card, textvariable=self.interface_var,
+            bg=CARD, fg=MUTED, font=(FONT, 7), anchor="w",
+            justify="left", wraplength=410,
+        ).pack(fill="x", pady=(2, 0))
         row = tk.Frame(card, bg=CARD)
         row.pack(fill="x", pady=(5, 0))
         self._button(
@@ -1906,11 +1953,28 @@ class PrimaryUI:
         if getattr(self.app, "closed", False):
             return
         dry = bool(self.app.dry.get())
-        mode_display = self._t("test_mode_short") if dry else self._t("normal_mode_short")
-        mode_bg = GREEN if dry else RED
-        self.mode_badge.configure(text=mode_display, bg=mode_bg, fg=BG)
-
         running = bool(getattr(self.app, "active", False) or getattr(self.app, "arming", False))
+
+        detector = getattr(self.app, "detector", None)
+        iface = str(getattr(detector, "last_interface", "0") or "0") if running else "0"
+        code = IFACE_TKF.get(iface, IFACE_TKF["0"])
+        if iface == "N":
+            badge_bg, badge_fg = RED, BG
+        elif iface in IFACE_SAFE:
+            badge_bg, badge_fg = GREEN, BG
+        elif iface == "X":
+            badge_bg, badge_fg = AMBER, BG
+        else:
+            badge_bg, badge_fg = BUTTON, MUTED
+        self.mode_badge.configure(text=code, bg=badge_bg, fg=badge_fg)
+
+        name = IFACE_NAMES.get(iface, IFACE_NAMES["0"])
+        if hasattr(self, "interface_var"):
+            if self.language == "zh":
+                self.interface_var.set(f"当前界面：{code} · {name[0]}")
+            else:
+                self.interface_var.set(f"Current interface: {code} · {name[1]}")
+
         if self._hud_ready():
             self.mode_badge2.configure(text=self._t("ready"), bg=GREEN, fg=BG)
         elif running:
