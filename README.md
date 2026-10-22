@@ -124,7 +124,7 @@
 
 ## 快速开始
 
-1. 从 [Releases](../../releases/latest) 下载 `从零开始的塔科夫生活_V1.2.7.zip`。
+1. 从 [Releases](../../releases/latest) 下载 `From-Zero-to-Tarkov-Life_V1.2.7.zip`。
 2. 解压后保持 `从零开始的塔科夫生活.exe`、`settings.json`、`icons` 在同一个目录，不要只复制 EXE。
 3. 双击 EXE。首次启动需要解包，可能等待数秒；如果出现「管理员权限」提示，建议选择「是」。
 4. 建议先勾选「测试模式」，进入本地 PvE 战局，确认 HUD、血量人形和快捷栏可见后按 **F1** 开始监控。
